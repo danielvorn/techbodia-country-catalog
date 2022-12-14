@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/techbodia-country-catalog/static/css/main.198e8e9a.css",
+    "main.js": "/techbodia-country-catalog/static/js/main.08caed11.js",
+    "static/js/787.af8f0f0d.chunk.js": "/techbodia-country-catalog/static/js/787.af8f0f0d.chunk.js",
+    "index.html": "/techbodia-country-catalog/index.html",
+    "main.198e8e9a.css.map": "/techbodia-country-catalog/static/css/main.198e8e9a.css.map",
+    "main.08caed11.js.map": "/techbodia-country-catalog/static/js/main.08caed11.js.map",
+    "787.af8f0f0d.chunk.js.map": "/techbodia-country-catalog/static/js/787.af8f0f0d.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.198e8e9a.css",
+    "static/js/main.08caed11.js"
+  ]
+}
