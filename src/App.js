@@ -1,20 +1,23 @@
 import "./App.css";
 import { QueryClient, QueryClientProvider, useQuery } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isEmpty, isUndefined } from "lodash";
 import Fuse from "fuse.js";
 import { useSortableData } from "./hooks";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import { ArrowUpIcon } from "@heroicons/react/20/solid";
 import { ArrowDownIcon } from "@heroicons/react/20/solid";
+import { ChevronLeftIcon } from "@heroicons/react/20/solid";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import Modal from "./components/Modal";
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="dark:bg-stone-700">
+      <div className="bg-gradient-to-r from-green-300 via-blue-500 to-purple-600">
         <div className="max-w-4xl mx-auto pt-12">
           <Catalog />
         </div>
@@ -29,39 +32,51 @@ function Catalog() {
   const [currentPage, setCurrentPage] = useState(1);
   const [countriesPerPage] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
+  const [modalContent, setModalContent] = useState({});
   const [searchResults, setSearchResults] = useState([]);
   const indexOfLastPost = currentPage * countriesPerPage;
   const indexOfFirstPost = indexOfLastPost - countriesPerPage;
   const paginatedCountries = countries.slice(indexOfFirstPost, indexOfLastPost);
   const showSearchResults = searchQuery.length > 0 && searchResults.length > 0;
   const countriesList = showSearchResults ? searchResults : paginatedCountries;
+  const [showModal, setShowModal] = useState(false);
+  const topRow = useRef(null);
+  const executeScroll = () =>
+    topRow?.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "start",
+    });
+
   const { items, requestSort, getClassNamesFor } =
     useSortableData(countriesList);
 
-  function searchItem(query) {
-    const fuse = new Fuse(countries, {
-      isCaseSensitive: false,
-      findAllMatches: true,
-      includeMatches: false,
-      includeScore: true,
-      useExtendedSearch: false,
-      threshold: 0.4,
-      location: 0,
-      distance: 2,
-      maxPatternLength: 32,
-      minMatchCharLength: 2,
-      keys: ["name.common"],
-    });
-
-    const result = fuse.search(query);
-    const finalResults = [];
-    if (result.length) {
-      result.forEach((item) => {
-        finalResults.push(item.item);
+  const searchItem = useCallback(
+    (query) => {
+      const fuse = new Fuse(countries, {
+        isCaseSensitive: false,
+        findAllMatches: true,
+        includeMatches: false,
+        includeScore: true,
+        useExtendedSearch: false,
+        threshold: 0.4,
+        location: 0,
+        distance: 2,
+        maxPatternLength: 32,
+        minMatchCharLength: 2,
+        keys: ["name.common"],
       });
-      setSearchResults(finalResults);
-    }
-  }
+      const result = fuse.search(query);
+      const finalResults = [];
+      if (result.length) {
+        result.forEach((item) => {
+          finalResults.push(item.item);
+        });
+        setSearchResults(finalResults);
+      }
+    },
+    [countries]
+  );
 
   const { isLoading, error, data } = useQuery(
     "countriesList",
@@ -81,7 +96,7 @@ function Catalog() {
     if (searchQuery) {
       searchItem(searchQuery);
     }
-  }, [searchQuery]);
+  }, [searchItem, searchQuery]);
 
   const previousPage = () => {
     if (currentPage !== 1) {
@@ -104,121 +119,144 @@ function Catalog() {
   };
 
   function SortIcon({ currentSortDirection }) {
+    const handleSort = () => {
+      executeScroll();
+      requestSort("name.official");
+    };
+
     return (
       <>
         {isUndefined(currentSortDirection) && (
-          <ArrowsUpDownIcon
-            onClick={() => requestSort("name.official")}
-            className="h-6 w-6"
-          />
+          <ArrowsUpDownIcon onClick={handleSort} className="h-6 w-6" />
         )}
         {currentSortDirection === "ascending" && (
-          <ArrowUpIcon
-            onClick={() => requestSort("name.official")}
-            className="h-6 w-6"
-          />
+          <ArrowUpIcon onClick={handleSort} className="h-6 w-6" />
         )}
         {currentSortDirection === "descending" && (
-          <ArrowDownIcon
-            onClick={() => requestSort("name.official")}
-            className="h-6 w-6"
-          />
+          <ArrowDownIcon onClick={handleSort} className="h-6 w-6" />
         )}
       </>
     );
   }
 
   return (
-    <div>
-      <input
-        type="text"
-        id="country-search-input"
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
-        placeholder="Enter a country name..."
-        required
-      />
+    <>
+      {showModal && (
+        <Modal
+          showModal={showModal}
+          setShowModal={setShowModal}
+          modalContent={modalContent}
+        />
+      )}
+      <div className="relative w-[50%] mx-auto">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <svg
+            aria-hidden="true"
+            className="w-5 h-5 text-gray-500 dark:text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            ></path>
+          </svg>
+        </div>
+        <input
+          type="search"
+          id="default-search"
+          className="block w-full p-4 pl-10 text-sm text-gray-900 rounded-lg bg-gray-50 focus:outline-0 "
+          placeholder="Enter Country Name..."
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
       <div>
         <Paginate
           postsPerPage={countriesPerPage}
-          totalPosts={countries.length}
+          totalPosts={
+            showSearchResults ? searchResults.length : countries.length
+          }
           paginate={paginate}
           previousPage={previousPage}
           nextPage={nextPage}
         />
-        <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
-          <table className="w-full text-md text-left text-gray-900 dark:text-white">
-            <thead className="text-sm text-gray-300 bg-gray-50 dark:bg-stone-500 dark:black">
-              <tr>
-                <th scope="col" className="py-3 px-6">
-                  Flag
-                </th>
-                <th scope="col" className="py-3 px-6">
-                  <div className="flex items-center">
-                    Name (official)
-                    <SortIcon
-                      currentSortDirection={getClassNamesFor("name.official")}
-                    />
-                  </div>
-                </th>
-                <th scope="col" className="py-3 px-6">
-                  Name (native)
-                </th>
-                <th scope="col" className="py-3 px-6">
-                  Name (alt)
-                </th>
-                <th scope="col" className="py-3 px-6">
-                  Code (cca2)
-                </th>
-                <th scope="col" className="py-3 px-6">
-                  Code (cca3)
-                </th>
-                <th scope="col" className="py-3 px-6">
-                  Calling Codes
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((country, index) => {
-                const nativeNameKey = isEmpty(country.name.nativeName)
-                  ? null
-                  : Object.keys(country.name.nativeName)[0];
-                return (
-                  <tr
-                    key={index}
-                    className="bg-white dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-400"
-                  >
-                    <td className="py-4 px-6">
-                      <img
-                        src={country.flags.png}
-                        width="75"
-                        style={{ objectFit: "contain", padding: 0 }}
+        <div className="flex flex-col h-screen">
+          <div className="flex-grow overflow-auto rounded-lg">
+            <table className="table-fixed relative text-center w-full mb-20">
+              <thead className="text-sm">
+                <tr ref={topRow}>
+                  <th className="sticky top-0 px-6 py-3 text-indigo-900 bg-indigo-300">
+                    Flag
+                  </th>
+                  <th className="sticky top-0 px-6 py-3 text-indigo-900 bg-indigo-300">
+                    <div className="flex items-center">
+                      Name (official)
+                      <SortIcon
+                        currentSortDirection={getClassNamesFor("name.official")}
                       />
-                    </td>
-                    <td className="py-4 px-6">{country.name.official}</td>
-                    <td className="py-4 px-6">
-                      {nativeNameKey
-                        ? country.name.nativeName[nativeNameKey].official
-                        : "N/A"}
-                    </td>
-                    <td className="py-4 px-6">
-                      {country.altSpellings.map((alt, index) => (
-                        <div key={index}>{alt}</div>
-                      ))}
-                    </td>
-                    <td className="py-4 px-6">{country.cca2}</td>
-                    <td className="py-4 px-6">{country.cca3}</td>
-                    <td className="py-4 px-6">
-                      {`${country.idd.root} ${country.idd.suffixes}`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </th>
+                  <th className="sticky top-0 px-6 py-3 text-indigo-900 bg-indigo-300">
+                    Name (native)
+                  </th>
+                  <th className="sticky top-0 px-6 py-3 text-indigo-900 bg-indigo-300">
+                    Name (alt)
+                  </th>
+                  <th className="sticky top-0 px-6 py-3 text-indigo-900 bg-indigo-300">
+                    Code (cca2)
+                  </th>
+                  <th className="sticky top-0 px-6 py-3 text-indigo-900 bg-indigo-300">
+                    Code (cca3)
+                  </th>
+                  <th className="sticky top-0 px-6 py-3 text-indigo-900 bg-indigo-300">
+                    Calling Codes
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-indigo-200 bg-indigo-100 text-indigo-900">
+                {items.map((country, index) => {
+                  const nativeNameKey = isEmpty(country.name.nativeName)
+                    ? null
+                    : Object.keys(country.name.nativeName)[0];
+                  return (
+                    <tr
+                      key={index}
+                      onClick={() => {
+                        setModalContent(country);
+                        setShowModal(true);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <td className="p-0">
+                        <img
+                          alt="country-flag"
+                          src={country.flags.png}
+                          className="object-contain w-fit"
+                        />
+                      </td>
+                      <td>{country.name.official}</td>
+                      <td>
+                        {nativeNameKey
+                          ? country.name.nativeName[nativeNameKey].official
+                          : "N/A"}
+                      </td>
+                      <td>{country.altSpellings[1] ?? "N/A"}</td>
+                      <td>{country.cca2}</td>
+                      <td>{country.cca3}</td>
+                      <td>{`${country.idd.root} ${country.idd.suffixes}`}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -229,30 +267,38 @@ const Paginate = ({
   previousPage,
   nextPage,
 }) => {
+  const [currentPage, setCurrentPage] = useState(null);
   const pageNumbers = [];
-
   for (let i = 1; i <= Math.ceil(totalPosts / postsPerPage); i++) {
     pageNumbers.push(i);
   }
 
   return (
     <div className="pagination-container">
-      <ul className="pagination flex justify-end gap-3 text-white">
-        <li onClick={previousPage} className="page-number">
-          Prev
-        </li>
+      <ul className="pagination flex justify-end gap-1 text-white items-center m-3">
+        <ChevronLeftIcon
+          onClick={previousPage}
+          className="w-7 cursor-pointer"
+        />
         {pageNumbers.map((number) => (
           <li
             key={number}
-            onClick={() => paginate(number)}
-            className="page-number"
+            onClick={() => {
+              setCurrentPage(number);
+              paginate(number);
+            }}
+            className="page-number cursor-pointer p-1"
           >
-            {number}
+            <span
+              className={`${
+                currentPage === number ? "text-2xl font-extrabold" : undefined
+              }`}
+            >
+              {number}
+            </span>
           </li>
         ))}
-        <li onClick={nextPage} className="page-number">
-          Next
-        </li>
+        <ChevronRightIcon onClick={nextPage} className="w-7 cursor-pointer" />
       </ul>
     </div>
   );
