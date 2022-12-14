@@ -2,15 +2,23 @@ import "./App.css";
 import { QueryClient, QueryClientProvider, useQuery } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
 import { useEffect, useState } from "react";
-import { isEmpty } from "lodash";
+import { isEmpty, isUndefined } from "lodash";
 import Fuse from "fuse.js";
+import { useSortableData } from "./hooks";
+import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
+import { ArrowUpIcon } from "@heroicons/react/20/solid";
+import { ArrowDownIcon } from "@heroicons/react/20/solid";
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Catalog />
+      <div className="dark:bg-stone-700">
+        <div className="max-w-4xl mx-auto pt-12">
+          <Catalog />
+        </div>
+      </div>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
@@ -22,10 +30,13 @@ function Catalog() {
   const [countriesPerPage] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [sortedCountries, setSortedCountries] = useState(null);
   const indexOfLastPost = currentPage * countriesPerPage;
   const indexOfFirstPost = indexOfLastPost - countriesPerPage;
   const paginatedCountries = countries.slice(indexOfFirstPost, indexOfLastPost);
+  const showSearchResults = searchQuery.length > 0 && searchResults.length > 0;
+  const countriesList = showSearchResults ? searchResults : paginatedCountries;
+  const { items, requestSort, getClassNamesFor } =
+    useSortableData(countriesList);
 
   function searchItem(query) {
     const fuse = new Fuse(countries, {
@@ -92,8 +103,31 @@ function Catalog() {
     setCurrentPage(pageNumber);
   };
 
-  const showSearchResults = searchQuery.length > 0 && searchResults.length > 0;
-  const countriesList = showSearchResults ? searchResults : paginatedCountries;
+  function SortIcon({ currentSortDirection }) {
+    return (
+      <>
+        {isUndefined(currentSortDirection) && (
+          <ArrowsUpDownIcon
+            onClick={() => requestSort("name.official")}
+            className="h-6 w-6"
+          />
+        )}
+        {currentSortDirection === "ascending" && (
+          <ArrowUpIcon
+            onClick={() => requestSort("name.official")}
+            className="h-6 w-6"
+          />
+        )}
+        {currentSortDirection === "descending" && (
+          <ArrowDownIcon
+            onClick={() => requestSort("name.official")}
+            className="h-6 w-6"
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <div>
       <input
@@ -104,10 +138,6 @@ function Catalog() {
         placeholder="Enter a country name..."
         required
       />
-
-      <div className="flex gap-3 mb-3">
-        <button>Sort By Name (official)</button>
-      </div>
       <div>
         <Paginate
           postsPerPage={countriesPerPage}
@@ -116,51 +146,77 @@ function Catalog() {
           previousPage={previousPage}
           nextPage={nextPage}
         />
-        <table>
-          <thead>
-            <tr>
-              <th align="center">Countries</th>
-              <th align="center">Name (Official)</th>
-              <th align="center">Name (Native)</th>
-              <th align="center">Name (Alt)</th>
-              <th align="center">Code (cca2)</th>
-              <th align="center">Code (cca3)</th>
-              <th align="center">Calling Codes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {countriesList.map((country) => {
-              const nativeNameKey = isEmpty(country.name.nativeName)
-                ? null
-                : Object.keys(country.name.nativeName)[0];
-              return (
-                <tr>
-                  <td>
-                    <img
-                      src={country.flags.png}
-                      width="75"
-                      style={{ objectFit: "contain", padding: 0 }}
+        <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
+          <table className="w-full text-md text-left text-gray-900 dark:text-white">
+            <thead className="text-sm text-gray-300 bg-gray-50 dark:bg-stone-500 dark:black">
+              <tr>
+                <th scope="col" className="py-3 px-6">
+                  Flag
+                </th>
+                <th scope="col" className="py-3 px-6">
+                  <div className="flex items-center">
+                    Name (official)
+                    <SortIcon
+                      currentSortDirection={getClassNamesFor("name.official")}
                     />
-                  </td>
-                  <td align="center">{country.name.official}</td>
-                  <td align="center">
-                    {nativeNameKey
-                      ? country.name.nativeName[nativeNameKey].official
-                      : "N/A"}
-                  </td>
-                  <td align="center">
-                    {country.altSpellings.map((alt) => (
-                      <div>{alt}</div>
-                    ))}
-                  </td>
-                  <td align="center">{country.cca2}</td>
-                  <td align="center">{country.cca3}</td>
-                  <td align="center">{`${country.idd.root} ${country.idd.suffixes}`}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </div>
+                </th>
+                <th scope="col" className="py-3 px-6">
+                  Name (native)
+                </th>
+                <th scope="col" className="py-3 px-6">
+                  Name (alt)
+                </th>
+                <th scope="col" className="py-3 px-6">
+                  Code (cca2)
+                </th>
+                <th scope="col" className="py-3 px-6">
+                  Code (cca3)
+                </th>
+                <th scope="col" className="py-3 px-6">
+                  Calling Codes
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((country, index) => {
+                const nativeNameKey = isEmpty(country.name.nativeName)
+                  ? null
+                  : Object.keys(country.name.nativeName)[0];
+                return (
+                  <tr
+                    key={index}
+                    className="bg-white dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-400"
+                  >
+                    <td className="py-4 px-6">
+                      <img
+                        src={country.flags.png}
+                        width="75"
+                        style={{ objectFit: "contain", padding: 0 }}
+                      />
+                    </td>
+                    <td className="py-4 px-6">{country.name.official}</td>
+                    <td className="py-4 px-6">
+                      {nativeNameKey
+                        ? country.name.nativeName[nativeNameKey].official
+                        : "N/A"}
+                    </td>
+                    <td className="py-4 px-6">
+                      {country.altSpellings.map((alt, index) => (
+                        <div key={index}>{alt}</div>
+                      ))}
+                    </td>
+                    <td className="py-4 px-6">{country.cca2}</td>
+                    <td className="py-4 px-6">{country.cca3}</td>
+                    <td className="py-4 px-6">
+                      {`${country.idd.root} ${country.idd.suffixes}`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -181,7 +237,7 @@ const Paginate = ({
 
   return (
     <div className="pagination-container">
-      <ul className="pagination flex justify-end gap-3">
+      <ul className="pagination flex justify-end gap-3 text-white">
         <li onClick={previousPage} className="page-number">
           Prev
         </li>
