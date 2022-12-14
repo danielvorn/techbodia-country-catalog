@@ -2,6 +2,7 @@ import "./App.css";
 import { QueryClient, QueryClientProvider, useQuery } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
 import { useEffect, useState } from "react";
+import { isEmpty } from "lodash";
 import Fuse from "fuse.js";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ function Catalog() {
   const [countriesPerPage] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [sortedCountries, setSortedCountries] = useState(null);
   const indexOfLastPost = currentPage * countriesPerPage;
   const indexOfFirstPost = indexOfLastPost - countriesPerPage;
   const paginatedCountries = countries.slice(indexOfFirstPost, indexOfLastPost);
@@ -44,7 +46,7 @@ function Catalog() {
     const finalResults = [];
     if (result.length) {
       result.forEach((item) => {
-        finalResults.push(item);
+        finalResults.push(item.item);
       });
       setSearchResults(finalResults);
     }
@@ -90,28 +92,76 @@ function Catalog() {
     setCurrentPage(pageNumber);
   };
 
+  const showSearchResults = searchQuery.length > 0 && searchResults.length > 0;
+  const countriesList = showSearchResults ? searchResults : paginatedCountries;
   return (
     <div>
-      <div>
-        <input
-          type="text"
-          id="country-search-input"
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
-          placeholder="Enter a country name..."
-          required
-        />
-      </div>
-      <Paginate
-        postsPerPage={countriesPerPage}
-        totalPosts={countries.length}
-        paginate={paginate}
-        previousPage={previousPage}
-        nextPage={nextPage}
+      <input
+        type="text"
+        id="country-search-input"
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
+        placeholder="Enter a country name..."
+        required
       />
-      {searchResults.length > 0 && searchQuery.length > 0
-        ? JSON.stringify(searchResults)
-        : JSON.stringify(paginatedCountries)}
+
+      <div className="flex gap-3 mb-3">
+        <button>Sort By Name (official)</button>
+      </div>
+      <div>
+        <Paginate
+          postsPerPage={countriesPerPage}
+          totalPosts={countries.length}
+          paginate={paginate}
+          previousPage={previousPage}
+          nextPage={nextPage}
+        />
+        <table>
+          <thead>
+            <tr>
+              <th align="center">Countries</th>
+              <th align="center">Name (Official)</th>
+              <th align="center">Name (Native)</th>
+              <th align="center">Name (Alt)</th>
+              <th align="center">Code (cca2)</th>
+              <th align="center">Code (cca3)</th>
+              <th align="center">Calling Codes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {countriesList.map((country) => {
+              const nativeNameKey = isEmpty(country.name.nativeName)
+                ? null
+                : Object.keys(country.name.nativeName)[0];
+              return (
+                <tr>
+                  <td>
+                    <img
+                      src={country.flags.png}
+                      width="75"
+                      style={{ objectFit: "contain", padding: 0 }}
+                    />
+                  </td>
+                  <td align="center">{country.name.official}</td>
+                  <td align="center">
+                    {nativeNameKey
+                      ? country.name.nativeName[nativeNameKey].official
+                      : "N/A"}
+                  </td>
+                  <td align="center">
+                    {country.altSpellings.map((alt) => (
+                      <div>{alt}</div>
+                    ))}
+                  </td>
+                  <td align="center">{country.cca2}</td>
+                  <td align="center">{country.cca3}</td>
+                  <td align="center">{`${country.idd.root} ${country.idd.suffixes}`}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
