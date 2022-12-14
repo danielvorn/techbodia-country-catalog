@@ -2,6 +2,7 @@ import "./App.css";
 import { QueryClient, QueryClientProvider, useQuery } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
 import { useEffect, useState } from "react";
+import Fuse from "fuse.js";
 
 const queryClient = new QueryClient();
 
@@ -18,9 +19,36 @@ function Catalog() {
   const [countries, setCountries] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [countriesPerPage] = useState(25);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
   const indexOfLastPost = currentPage * countriesPerPage;
   const indexOfFirstPost = indexOfLastPost - countriesPerPage;
   const paginatedCountries = countries.slice(indexOfFirstPost, indexOfLastPost);
+
+  function searchItem(query) {
+    const fuse = new Fuse(countries, {
+      isCaseSensitive: false,
+      findAllMatches: true,
+      includeMatches: false,
+      includeScore: true,
+      useExtendedSearch: false,
+      threshold: 0.4,
+      location: 0,
+      distance: 2,
+      maxPatternLength: 32,
+      minMatchCharLength: 2,
+      keys: ["name.common"],
+    });
+
+    const result = fuse.search(query);
+    const finalResults = [];
+    if (result.length) {
+      result.forEach((item) => {
+        finalResults.push(item);
+      });
+      setSearchResults(finalResults);
+    }
+  }
 
   const { isLoading, error, data } = useQuery(
     "countriesList",
@@ -35,6 +63,12 @@ function Catalog() {
       setCountries(data);
     }
   }, [data]);
+
+  useEffect(() => {
+    if (searchQuery) {
+      searchItem(searchQuery);
+    }
+  }, [searchQuery]);
 
   const previousPage = () => {
     if (currentPage !== 1) {
@@ -58,6 +92,16 @@ function Catalog() {
 
   return (
     <div>
+      <div>
+        <input
+          type="text"
+          id="country-search-input"
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
+          placeholder="Enter a country name..."
+          required
+        />
+      </div>
       <Paginate
         postsPerPage={countriesPerPage}
         totalPosts={countries.length}
@@ -65,7 +109,9 @@ function Catalog() {
         previousPage={previousPage}
         nextPage={nextPage}
       />
-      {JSON.stringify(paginatedCountries)}
+      {searchResults.length > 0 && searchQuery.length > 0
+        ? JSON.stringify(searchResults)
+        : JSON.stringify(paginatedCountries)}
     </div>
   );
 }
