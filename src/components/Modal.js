@@ -48,14 +48,6 @@ export default function Modal({ setShowModal, modalContent }) {
                     Object.keys(modalContent.languages)
                   ] ?? "N/A"}
                 </li>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
               </ul>
             </div>
           </div>
