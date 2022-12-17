@@ -1,3 +1,5 @@
+import { isEmpty } from "lodash";
+
 export default function SearchInput({ setSearchQuery }) {
   return (
     <div className="relative w-[50%] mx-auto">
@@ -23,7 +25,14 @@ export default function SearchInput({ setSearchQuery }) {
         id="default-search"
         className="block w-full p-4 pl-10 text-sm text-gray-900 rounded-lg bg-gray-50 focus:outline-0 "
         placeholder="Enter Country Name..."
-        onChange={(e) => setSearchQuery(e.target.value)}
+        onChange={(e) => {
+          if (isEmpty(e.target.value)) {
+            setSearchQuery(e.target.value);
+          }
+          setTimeout(() => {
+            setSearchQuery(e.target.value);
+          }, 1000);
+        }}
       />
     </div>
   );

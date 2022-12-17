@@ -7,6 +7,7 @@ import Paginate from "./components/Paginate";
 import SearchInput from "./components/SearchInput";
 import Table from "./components/Table";
 import Spinner from "./components/Spinner";
+import { isEmpty } from "lodash";
 
 const queryClient = new QueryClient();
 
@@ -32,17 +33,15 @@ function Catalog() {
   const indexOfLastPost = currentPage * countriesPerPage;
   const indexOfFirstPost = indexOfLastPost - countriesPerPage;
   const showSearchResults = searchQuery.length > 0 && searchResults.length > 0;
+  const totalResults = useMemo(
+    () => (showSearchResults ? searchResults : countries),
+    [countries, searchResults, showSearchResults]
+  );
 
   const paginatedCountries = useMemo(() => {
-    const result = showSearchResults ? searchResults : countries;
-    return result.slice(indexOfFirstPost, indexOfLastPost);
-  }, [
-    countries,
-    indexOfFirstPost,
-    indexOfLastPost,
-    searchResults,
-    showSearchResults,
-  ]);
+    return totalResults.slice(indexOfFirstPost, indexOfLastPost);
+  }, [indexOfFirstPost, indexOfLastPost, totalResults]);
+
   const searchItem = useCallback(
     (query) => {
       const fuse = new Fuse(countries, {
@@ -77,6 +76,8 @@ function Catalog() {
   }, [data]);
 
   useEffect(() => {
+    if (isEmpty(searchQuery)) return;
+
     if (searchQuery) {
       setCurrentPage(1);
       searchItem(searchQuery);
@@ -90,7 +91,7 @@ function Catalog() {
   };
 
   const nextPage = () => {
-    if (currentPage !== Math.ceil(countries.length / countriesPerPage)) {
+    if (currentPage !== Math.ceil(totalResults.length / countriesPerPage)) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -110,9 +111,7 @@ function Catalog() {
         <>
           <Paginate
             postsPerPage={countriesPerPage}
-            totalPosts={
-              showSearchResults ? searchResults.length : countries.length
-            }
+            totalPosts={totalResults.length}
             paginate={paginate}
             currentPage={currentPage}
             previousPage={previousPage}
